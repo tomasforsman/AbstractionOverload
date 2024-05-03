@@ -1,0 +1,84 @@
+﻿services:
+  abstractionoverload:
+    image: abstractionoverload
+    build:
+      context: .
+      dockerfile: AbstractionOverload/Dockerfile
+
+  baseapp:
+    image: baseapp
+    build:
+      context: .
+      dockerfile: BaseApp/Dockerfile
+
+  interfaces:
+    image: interfaces
+    build:
+      context: .
+      dockerfile: Interfaces/Dockerfile
+
+  decoratorpattern:
+    image: decoratorpattern
+    build:
+      context: .
+      dockerfile: DecoratorPattern/Dockerfile
+
+  factorypattern:
+    image: factorypattern
+    build:
+      context: .
+      dockerfile: FactoryPattern/Dockerfile
+
+  strategypattern:
+    image: strategypattern
+    build:
+      context: .
+      dockerfile: StrategyPattern/Dockerfile
+
+  singletonpattern:
+    image: singletonpattern
+    build:
+      context: .
+      dockerfile: SingletonPattern/Dockerfile
+
+  commandpattern:
+    image: commandpattern
+    build:
+      context: .
+      dockerfile: CommandPattern/Dockerfile
+
+  observerpattern:
+    image: observerpattern
+    build:
+      context: .
+      dockerfile: ObserverPattern/Dockerfile
+
+  adapterpattern:
+    image: adapterpattern
+    build:
+      context: .
+      dockerfile: AdapterPattern/Dockerfile
+
+  proxypattern:
+    image: proxypattern
+    build:
+      context: .
+      dockerfile: ProxyPattern/Dockerfile
+
+  mvc:
+    image: mvc
+    build:
+      context: .
+      dockerfile: MVC/Dockerfile
+
+  dependencyinjection:
+    image: dependencyinjection
+    build:
+      context: .
+      dockerfile: DependencyInjection/Dockerfile
+
+  facadepattern:
+    image: facadepattern
+    build:
+      context: .
+      dockerfile: FacadePattern/Dockerfile
