@@ -4,7 +4,7 @@
 	{
 		if (string.IsNullOrEmpty(content))
 		{
-			Console.WriteLine("File not found or empty.");
+			DisplayMessage("File not found or empty.");
 		}
 		else
 		{
@@ -14,6 +14,6 @@
 
 	public void DisplayMessage(string message)
 	{
-		Console.WriteLine(message);
+		Console.WriteLine($"Notification: {message}");
 	}
 }

@@ -1,4 +1,4 @@
 ﻿public interface IFileReader
 {
-	string ReadFile(string path);
+	Task<string> ReadFileAsync(string path);
 }

@@ -1,7 +1,17 @@
-﻿public class BasicFileReader : IFileReader
+﻿using Serilog;
+
+public class BasicFileReader : IFileReader
 {
-	public string ReadFile(string path)
+	public async Task<string> ReadFileAsync(string path)
 	{
-		return File.ReadAllText(path);
+		try
+		{
+			return await File.ReadAllTextAsync(path);
+		}
+		catch (Exception ex)
+		{
+			Log.Error(ex, "Error reading file at {Path}", path);
+			throw;
+		}
 	}
 }

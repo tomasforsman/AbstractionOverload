@@ -1,4 +1,6 @@
-﻿public class FileController
+﻿using Serilog;
+
+public class FileController
 {
 	private readonly FileModel _model;
 	private readonly ConsoleView _view;
@@ -9,16 +11,27 @@
 		_view = view;
 	}
 
-	public void ReadFile(IFileReader fileReader)
+	public async Task ReadFileAsync(IFileReader fileReader)
 	{
-		var content = _model.LoadContent(fileReader.ReadFile(_model.FilePath));
-		if (!string.IsNullOrEmpty(content))
+		Log.Debug("Attempting to read file at {FilePath}", _model.FilePath);
+		try
 		{
-			_view.DisplayContent(content);
+			var content = await _model.LoadContentAsync(await fileReader.ReadFileAsync(_model.FilePath));
+			if (!string.IsNullOrEmpty(content))
+			{
+				_view.DisplayContent(content);
+				Log.Information("File read successfully.");
+			}
+			else
+			{
+				_view.DisplayMessage("File not found or empty.");
+				Log.Warning("File at {FilePath} was empty or not found.", _model.FilePath);
+			}
 		}
-		else
+		catch (Exception ex)
 		{
-			_view.DisplayMessage("File not found or empty.");
+			Log.Error(ex, "Failed to read file at {FilePath}", _model.FilePath);
+			_view.DisplayMessage("Error occurred while reading file.");
 		}
 	}
 }

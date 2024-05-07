@@ -2,6 +2,6 @@
 {
 	public void Update(string message)
 	{
-		Console.WriteLine($"Notification: {message}");
+		Console.WriteLine($"Observer Notification: {message}");
 	}
 }

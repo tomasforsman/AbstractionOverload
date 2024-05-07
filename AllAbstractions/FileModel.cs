@@ -4,7 +4,7 @@
 	public string FilePath { get; set; }
 	private string _content;
 
-	public string LoadContent(string content)
+	public async Task<string> LoadContentAsync(string content)
 	{
 		if (!string.IsNullOrEmpty(content) && content != _content)
 		{

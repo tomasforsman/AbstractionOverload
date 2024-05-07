@@ -11,11 +11,11 @@
 		_lastReadTime = DateTime.MinValue;
 	}
 
-	public string ReadFile(string path)
+	public async Task<string> ReadFileAsync(string path)
 	{
 		if ((DateTime.Now - _lastReadTime).TotalMinutes > 5)
 		{
-			_cachedContent = _wrappedReader.ReadFile(path);
+			_cachedContent = await _wrappedReader.ReadFileAsync(path);
 			_lastReadTime = DateTime.Now;
 		}
 		return _cachedContent;
