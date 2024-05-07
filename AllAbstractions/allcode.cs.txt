@@ -1,8 +1,18 @@
+using Serilog;
+
 public class BasicFileReader : IFileReader
 {
-	public string ReadFile(string path)
+	public async Task<string> ReadFileAsync(string path)
 	{
-		return File.ReadAllText(path);
+		try
+		{
+			return await File.ReadAllTextAsync(path);
+		}
+		catch (Exception ex)
+		{
+			Log.Error(ex, "Error reading file at {Path}", path);
+			throw;
+		}
 	}
 }
 public class CachedFileReader : IFileReader
@@ -18,11 +28,11 @@ public class CachedFileReader : IFileReader
 		_lastReadTime = DateTime.MinValue;
 	}
 
-	public string ReadFile(string path)
+	public async Task<string> ReadFileAsync(string path)
 	{
 		if ((DateTime.Now - _lastReadTime).TotalMinutes > 5)
 		{
-			_cachedContent = _wrappedReader.ReadFile(path);
+			_cachedContent = await _wrappedReader.ReadFileAsync(path);
 			_lastReadTime = DateTime.Now;
 		}
 		return _cachedContent;
@@ -32,7 +42,7 @@ public class ConsoleObserver : IObserver
 {
 	public void Update(string message)
 	{
-		Console.WriteLine($"Notification: {message}");
+		Console.WriteLine($"Observer Notification: {message}");
 	}
 }
 public class ConsoleView
@@ -41,7 +51,7 @@ public class ConsoleView
 	{
 		if (string.IsNullOrEmpty(content))
 		{
-			Console.WriteLine("File not found or empty.");
+			DisplayMessage("File not found or empty.");
 		}
 		else
 		{
@@ -51,40 +61,26 @@ public class ConsoleView
 
 	public void DisplayMessage(string message)
 	{
-		Console.WriteLine(message);
+		Console.WriteLine($"Notification: {message}");
 	}
 }
+using System.Reflection;
+
 public class ContentProcessorFactory : IContentProcessorFactory
 {
-	private static ContentProcessorFactory _instance;
-
-	private ContentProcessorFactory() {}
-
-	public static ContentProcessorFactory Instance
-	{
-		get
-		{
-			if (_instance == null)
-			{
-				_instance = new ContentProcessorFactory();
-			}
-			return _instance;
-		}
-	}
-
 	public IContentProcessor GetContentProcessor(string type)
 	{
-		switch (type.ToLower())
+		var processorType = Assembly.GetExecutingAssembly().GetTypes()
+			.FirstOrDefault(t => t.Name.Equals(type + "Processor", StringComparison.OrdinalIgnoreCase));
+		if (processorType != null)
 		{
-			case "json":
-				return new JsonProcessor();
-			case "summary":
-				return new TextSummarizer();
-			default:
-				throw new ArgumentException("Unknown Content Processor type.");
+			return Activator.CreateInstance(processorType) as IContentProcessor;
 		}
+		throw new ArgumentException($"Unknown Content Processor type: {type}");
 	}
 }
+using Serilog;
+
 public class FileController
 {
 	private readonly FileModel _model;
@@ -96,16 +92,27 @@ public class FileController
 		_view = view;
 	}
 
-	public void ReadFile(IFileReader fileReader)
+	public async Task ReadFileAsync(IFileReader fileReader)
 	{
-		var content = _model.LoadContent(fileReader.ReadFile(_model.FilePath));
-		if (!string.IsNullOrEmpty(content))
+		Log.Debug("Attempting to read file at {FilePath}", _model.FilePath);
+		try
 		{
-			_view.DisplayContent(content);
+			var content = await _model.LoadContentAsync(await fileReader.ReadFileAsync(_model.FilePath));
+			if (!string.IsNullOrEmpty(content))
+			{
+				_view.DisplayContent(content);
+				Log.Information("File read successfully.");
+			}
+			else
+			{
+				_view.DisplayMessage("File not found or empty.");
+				Log.Warning("File at {FilePath} was empty or not found.", _model.FilePath);
+			}
 		}
-		else
+		catch (Exception ex)
 		{
-			_view.DisplayMessage("File not found or empty.");
+			Log.Error(ex, "Failed to read file at {FilePath}", _model.FilePath);
+			_view.DisplayMessage("Error occurred while reading file.");
 		}
 	}
 }
@@ -115,7 +122,7 @@ public class FileModel : ISubject
 	public string FilePath { get; set; }
 	private string _content;
 
-	public string LoadContent(string content)
+	public async Task<string> LoadContentAsync(string content)
 	{
 		if (!string.IsNullOrEmpty(content) && content != _content)
 		{
@@ -149,7 +156,7 @@ public class FileModel : ISubject
 }
 public interface ICommand
 {
-	void Execute();
+	Task ExecuteAsync();
 }
 public interface IContentProcessor
 {
@@ -161,9 +168,9 @@ public interface IContentProcessorFactory
 }
 public interface IFileReader
 {
-	string ReadFile(string path);
+	Task<string> ReadFileAsync(string path);
 }
-public interface ILogger
+public interface ILoggerAdapter
 {
 	void Log(string message);
 }
@@ -181,109 +188,58 @@ public class JsonProcessor : IContentProcessor
 {
 	public void Process(string content)
 	{
-		// Example: Convert content to JSON
 		Console.WriteLine($"Processing as JSON: {content}");
 	}
 }
-public class LoggerAdapter : ILogger
-{
-	private ThirdPartyLogger _thirdPartyLogger;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Serilog;
 
-	public LoggerAdapter()
-	{
-		_thirdPartyLogger = new ThirdPartyLogger();
-	}
+// Interfaces
 
-	public void Log(string message)
-	{
-		_thirdPartyLogger.LogMessage(message);
-	}
-}
-public class LoggingFileReaderProxy : IFileReader
-{
-	private IFileReader _realFileReader;
+// Implementations
 
-	public LoggingFileReaderProxy(IFileReader realFileReader)
-	{
-		_realFileReader = realFileReader;
-	}
-
-	public string ReadFile(string path)
-	{
-		// Log before accessing the file
-		Console.WriteLine($"Reading file: {path}");
-        
-		string content = _realFileReader.ReadFile(path);
-        
-		// Log after file is read
-		Console.WriteLine($"Finished reading file: {path}");
-        
-		return content;
-	}
-}
-public class ProcessFileCommand : ICommand
-{
-	private IContentProcessor _processor;
-	private string _content;
-
-	public ProcessFileCommand(IContentProcessor processor, string content)
-	{
-		_processor = processor;
-		_content = content;
-	}
-
-	public void Execute()
-	{
-		_processor.Process(_content);
-	}
-}
 class Program
 {
-	static void Main(string[] args)
-	{
-		var model = new FileModel { FilePath = "example.txt" };
-		var view = new ConsoleView();
-		var observer = new ConsoleObserver();
-		model.RegisterObserver(observer);
+    static async Task Main(string[] args)
+    {
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.Console()
+            .CreateLogger();
 
-		var fileReader = new CachedFileReader(new BasicFileReader());
-		var controller = new FileController(model, view);
+        try
+        {
+            var model = new FileModel { FilePath = "example.txt" };
+            var view = new ConsoleView();
+            var observer = new ConsoleObserver();
+            model.RegisterObserver(observer);
 
-		controller.ReadFile(fileReader);  // Read and potentially cache the file
-		controller.ReadFile(fileReader);  // Possibly fetch from cache
-	}
-}
-public class ReadFileCommand : ICommand
-{
-	private IFileReader _fileReader;
-	private string _filePath;
+            var fileReader = new CachedFileReader(new BasicFileReader());
+            var controller = new FileController(model, view);
 
-	public ReadFileCommand(IFileReader fileReader, string filePath)
-	{
-		_fileReader = fileReader;
-		_filePath = filePath;
-	}
-
-	public void Execute()
-	{
-		string content = _fileReader.ReadFile(_filePath);
-		Console.WriteLine(content);
-	}
+            await controller.ReadFileAsync(fileReader);  // Read and potentially cache the file
+            await controller.ReadFileAsync(fileReader);  // Possibly fetch from cache
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Unhandled exception.");
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
+    }
 }
 public class TextSummarizer : IContentProcessor
 {
 	public void Process(string content)
 	{
-		// Example: Summarize the content
 		Console.WriteLine("Summarizing content...");
 		Console.WriteLine(content.Substring(0, Math.Min(100, content.Length)) + "...");
-	}
-}
-public class ThirdPartyLogger
-{
-	public void LogMessage(string info)
-	{
-		Console.WriteLine($"Log: {info}");
 	}
 }
 // <autogenerated />
@@ -305,7 +261,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AllAbstractions")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+673337643c9a5ea130215ef75e0b5ae0d783b5ac")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+94f78340aadb0b01564779c89a609afb7013c14a")]
 [assembly: System.Reflection.AssemblyProductAttribute("AllAbstractions")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AllAbstractions")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
