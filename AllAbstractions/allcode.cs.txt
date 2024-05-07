@@ -1,0 +1,322 @@
+public class BasicFileReader : IFileReader
+{
+	public string ReadFile(string path)
+	{
+		return File.ReadAllText(path);
+	}
+}
+public class CachedFileReader : IFileReader
+{
+	private readonly IFileReader _wrappedReader;
+	private string _cachedContent;
+	private DateTime _lastReadTime;
+
+	public CachedFileReader(IFileReader reader)
+	{
+		_wrappedReader = reader;
+		_cachedContent = string.Empty;
+		_lastReadTime = DateTime.MinValue;
+	}
+
+	public string ReadFile(string path)
+	{
+		if ((DateTime.Now - _lastReadTime).TotalMinutes > 5)
+		{
+			_cachedContent = _wrappedReader.ReadFile(path);
+			_lastReadTime = DateTime.Now;
+		}
+		return _cachedContent;
+	}
+}
+public class ConsoleObserver : IObserver
+{
+	public void Update(string message)
+	{
+		Console.WriteLine($"Notification: {message}");
+	}
+}
+public class ConsoleView
+{
+	public void DisplayContent(string content)
+	{
+		if (string.IsNullOrEmpty(content))
+		{
+			Console.WriteLine("File not found or empty.");
+		}
+		else
+		{
+			Console.WriteLine(content);
+		}
+	}
+
+	public void DisplayMessage(string message)
+	{
+		Console.WriteLine(message);
+	}
+}
+public class ContentProcessorFactory : IContentProcessorFactory
+{
+	private static ContentProcessorFactory _instance;
+
+	private ContentProcessorFactory() {}
+
+	public static ContentProcessorFactory Instance
+	{
+		get
+		{
+			if (_instance == null)
+			{
+				_instance = new ContentProcessorFactory();
+			}
+			return _instance;
+		}
+	}
+
+	public IContentProcessor GetContentProcessor(string type)
+	{
+		switch (type.ToLower())
+		{
+			case "json":
+				return new JsonProcessor();
+			case "summary":
+				return new TextSummarizer();
+			default:
+				throw new ArgumentException("Unknown Content Processor type.");
+		}
+	}
+}
+public class FileController
+{
+	private readonly FileModel _model;
+	private readonly ConsoleView _view;
+
+	public FileController(FileModel model, ConsoleView view)
+	{
+		_model = model;
+		_view = view;
+	}
+
+	public void ReadFile(IFileReader fileReader)
+	{
+		var content = _model.LoadContent(fileReader.ReadFile(_model.FilePath));
+		if (!string.IsNullOrEmpty(content))
+		{
+			_view.DisplayContent(content);
+		}
+		else
+		{
+			_view.DisplayMessage("File not found or empty.");
+		}
+	}
+}
+public class FileModel : ISubject
+{
+	private List<IObserver> _observers = new List<IObserver>();
+	public string FilePath { get; set; }
+	private string _content;
+
+	public string LoadContent(string content)
+	{
+		if (!string.IsNullOrEmpty(content) && content != _content)
+		{
+			_content = content;
+			NotifyObservers("Content updated");
+		}
+		else
+		{
+			NotifyObservers("No change in content");
+		}
+		return _content;
+	}
+
+	public void RegisterObserver(IObserver observer)
+	{
+		_observers.Add(observer);
+	}
+
+	public void RemoveObserver(IObserver observer)
+	{
+		_observers.Remove(observer);
+	}
+
+	public void NotifyObservers(string message)
+	{
+		foreach (var observer in _observers)
+		{
+			observer.Update(message);
+		}
+	}
+}
+public interface ICommand
+{
+	void Execute();
+}
+public interface IContentProcessor
+{
+	void Process(string content);
+}
+public interface IContentProcessorFactory
+{
+	IContentProcessor GetContentProcessor(string type);
+}
+public interface IFileReader
+{
+	string ReadFile(string path);
+}
+public interface ILogger
+{
+	void Log(string message);
+}
+public interface IObserver
+{
+	void Update(string message);
+}
+public interface ISubject
+{
+	void RegisterObserver(IObserver observer);
+	void RemoveObserver(IObserver observer);
+	void NotifyObservers(string message);
+}
+public class JsonProcessor : IContentProcessor
+{
+	public void Process(string content)
+	{
+		// Example: Convert content to JSON
+		Console.WriteLine($"Processing as JSON: {content}");
+	}
+}
+public class LoggerAdapter : ILogger
+{
+	private ThirdPartyLogger _thirdPartyLogger;
+
+	public LoggerAdapter()
+	{
+		_thirdPartyLogger = new ThirdPartyLogger();
+	}
+
+	public void Log(string message)
+	{
+		_thirdPartyLogger.LogMessage(message);
+	}
+}
+public class LoggingFileReaderProxy : IFileReader
+{
+	private IFileReader _realFileReader;
+
+	public LoggingFileReaderProxy(IFileReader realFileReader)
+	{
+		_realFileReader = realFileReader;
+	}
+
+	public string ReadFile(string path)
+	{
+		// Log before accessing the file
+		Console.WriteLine($"Reading file: {path}");
+        
+		string content = _realFileReader.ReadFile(path);
+        
+		// Log after file is read
+		Console.WriteLine($"Finished reading file: {path}");
+        
+		return content;
+	}
+}
+public class ProcessFileCommand : ICommand
+{
+	private IContentProcessor _processor;
+	private string _content;
+
+	public ProcessFileCommand(IContentProcessor processor, string content)
+	{
+		_processor = processor;
+		_content = content;
+	}
+
+	public void Execute()
+	{
+		_processor.Process(_content);
+	}
+}
+class Program
+{
+	static void Main(string[] args)
+	{
+		var model = new FileModel { FilePath = "example.txt" };
+		var view = new ConsoleView();
+		var observer = new ConsoleObserver();
+		model.RegisterObserver(observer);
+
+		var fileReader = new CachedFileReader(new BasicFileReader());
+		var controller = new FileController(model, view);
+
+		controller.ReadFile(fileReader);  // Read and potentially cache the file
+		controller.ReadFile(fileReader);  // Possibly fetch from cache
+	}
+}
+public class ReadFileCommand : ICommand
+{
+	private IFileReader _fileReader;
+	private string _filePath;
+
+	public ReadFileCommand(IFileReader fileReader, string filePath)
+	{
+		_fileReader = fileReader;
+		_filePath = filePath;
+	}
+
+	public void Execute()
+	{
+		string content = _fileReader.ReadFile(_filePath);
+		Console.WriteLine(content);
+	}
+}
+public class TextSummarizer : IContentProcessor
+{
+	public void Process(string content)
+	{
+		// Example: Summarize the content
+		Console.WriteLine("Summarizing content...");
+		Console.WriteLine(content.Substring(0, Math.Min(100, content.Length)) + "...");
+	}
+}
+public class ThirdPartyLogger
+{
+	public void LogMessage(string info)
+	{
+		Console.WriteLine($"Log: {info}");
+	}
+}
+// <autogenerated />
+using System;
+using System.Reflection;
+[assembly: global::System.Runtime.Versioning.TargetFrameworkAttribute(".NETCoreApp,Version=v8.0", FrameworkDisplayName = ".NET 8.0")]
+//------------------------------------------------------------------------------
+// <auto-generated>
+//     This code was generated by a tool.
+//
+//     Changes to this file may cause incorrect behavior and will be lost if
+//     the code is regenerated.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+using System;
+using System.Reflection;
+
+[assembly: System.Reflection.AssemblyCompanyAttribute("AllAbstractions")]
+[assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
+[assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+673337643c9a5ea130215ef75e0b5ae0d783b5ac")]
+[assembly: System.Reflection.AssemblyProductAttribute("AllAbstractions")]
+[assembly: System.Reflection.AssemblyTitleAttribute("AllAbstractions")]
+[assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
+
+// Generated by the MSBuild WriteCodeFragment class.
+
+// <auto-generated/>
+global using global::System;
+global using global::System.Collections.Generic;
+global using global::System.IO;
+global using global::System.Linq;
+global using global::System.Net.Http;
+global using global::System.Threading;
+global using global::System.Threading.Tasks;

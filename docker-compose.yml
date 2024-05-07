@@ -82,3 +82,9 @@
     build:
       context: .
       dockerfile: FacadePattern/Dockerfile
+
+  allabstractions:
+    image: allabstractions
+    build:
+      context: .
+      dockerfile: AllAbstractions/Dockerfile

@@ -94,6 +94,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MetaAOP", "MetaAOP\MetaAOP.
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunctionalProgramming", "FunctionalProgramming\FunctionalProgramming.fsproj", "{D90FC59F-55B4-4E9B-AE37-3BA122B48EE4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AllAbstractions", "AllAbstractions\AllAbstractions.csproj", "{6247054B-1EB0-4DF3-B230-AA9A32B88574}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -272,6 +274,10 @@ Global
 		{D90FC59F-55B4-4E9B-AE37-3BA122B48EE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D90FC59F-55B4-4E9B-AE37-3BA122B48EE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D90FC59F-55B4-4E9B-AE37-3BA122B48EE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6247054B-1EB0-4DF3-B230-AA9A32B88574}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6247054B-1EB0-4DF3-B230-AA9A32B88574}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6247054B-1EB0-4DF3-B230-AA9A32B88574}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6247054B-1EB0-4DF3-B230-AA9A32B88574}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
